@@ -1,42 +1,53 @@
 import os
+import subprocess
 
-def create_tmux_session(session):
-    os.system(f"tmux has-session -t {session} || tmux new-session -d -A -s {session}")
-    print(f'To access local tmux session: tmux attach-session -t {session}')
+from SHH_configuration import REMOTES
 
-def create_remote_session(remote_session):
-    send_to_tmux('main', f'tmux has-session -t {remote_session} || tmux new-session -d -A -s {remote_session}')
+def create_tmux_session(session_name):
+    print(f'Creating a remote tmux session. To attach: tmux attach-session -t {session_name}')
+    return f'tmux has-session -t {session_name} || tmux new-session -d -A -s {session_name}'
 
-def log_onto_tpu_vm(session, tpu_vm, zone='us-central1-f', project='subgoal-search-atp'):
-    send_to_tmux(session, f'gcloud alpha compute tpus tpu-vm ssh {tpu_vm} --zone {zone} --project {project}')
+def create_command_to_tmux(session_name, command):
+    return f"tmux send-keys -t {session_name}:0 '{command}' Enter"
 
-def kill_tmux_session(session):
-    os.system(f"tmux kill-session -t {session}")
+def send_command_to_remote(remote, command):
+    command_output = subprocess.run(f'ssh {REMOTES[remote]} "{command}"', shell=True, capture_output=True)
+    # print(command_output)
+    return command_output
 
-def send_to_tmux(session, content):
-    os.system(f"tmux send-keys -t {session}:0 '{content}' Enter")
+def create_remote_tmux_session(remote, session_name):
+    send_command_to_remote(remote, create_tmux_session(session_name))
 
-def send_to_remote_tmux(session, remote_session, content):
-    print(f"tmux send-keys -t {remote_session}:0 '{content}'")
-    # assert False
-    send_to_tmux(session, f"tmux send-keys -t {remote_session}:0 '{content}'")
+def send_command_to_remote_tmux(remote, session_name, command):
+    send_command_to_remote(remote, create_command_to_tmux(session_name, command))
+
+def transfer_directory(remote, local_path, remote_path):
+    subprocess.run(f'rsync -avz --exclude cluster_runner {local_path}/ {REMOTES[remote]}:{remote_path}/', shell=True)
 
 
-LOCAL_SESSION = 'main'
-REMOTE_SESSION = 'remote_main'
+# send_command_to_remote(1, 'tmux')
 
-create_tmux_session(LOCAL_SESSION)
+create_remote_tmux_session(1, 'wielki_duper_sesja')
+# transfer_directory(1, 'wielki_duper_sesja', 'example_pythons', 'to_i_owo')
+# send_command_to_remote_tmux(1, 'wielki_duper_sesja', 'python3 hi.py')
 
-create_remote_session(REMOTE_SESSION)
 
-# os.system("tmux new-session -d -A -s main")
-# os.system("tmux send-keys -t main:0 'echo dupa > duuuupa.txt' Enter")
+# def create_tmux_session(session_name):
+#     print(f'Creating a remote tmux session. To attach: tmux attach-session -t {session_name}')
+#     return f'tmux has-session -t {session_name} || tmux new-session -d -A -s {session_name}'
 #
-# send_to_tmux('main', 'gcloud alpha compute tpus tpu-vm ssh tpu-us --zone us-central1-f --project subgoal-search-atp')
-# send_to_remote_tmux('main', 'remote_main', 'echo wielka_dupa')
-# send_to_tmux('main', 'logout')
-# kill_tmux_session(LOCAL_SESSION)
-
+# def create_command_to_tmux(session_name, command):
+#     return f"tmux send-keys -t {session_name}:0 '{command}' Enter"
 #
-# os.system("tmux send-keys -t main:0 'gcloud alpha compute tpus tpu-vm ssh tpu-us --zone us-central1-f --project subgoal-search-atp' Enter")
-# os.system("tmux send-keys -t main:0 'python3 hi.py' Enter")
+# def send_command_to_remote(remote, command):
+#     subprocess.run
+#     os.system(f'ssh {REMOTES[remote]} "{command}"')
+#
+# def create_remote_tmux_session(remote, session_name):
+#     send_command_to_remote(remote, create_tmux_session(session_name))
+#
+# def send_command_to_remote_tmux(remote, session_name, command):
+#     send_command_to_remote(remote, create_command_to_tmux(session_name, command))
+#
+# def transfer_directory(remote, session_name, local_path, remote_path):
+#     os.system(f'rsync -avz --exclude cluster_runner {local_path}/ {REMOTES[remote]}:{remote_path}/')
